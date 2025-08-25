@@ -6,8 +6,6 @@ import ReadQr from "./ReadQr";
 function App() {
   const [codes, setCodes] = useState(""); // single input field (string)
   const [loading, setLoading] = useState(false);
-  const [lat, setLat] = useState();
-  const [long, setLong] = useState();
 
   // Handle QR scan → append to codes
   const handleQrScan = (value) => {
@@ -33,9 +31,7 @@ function App() {
 
     setLoading(true);
     const data = {
-      codes: codes.split(","), // send as array
-      longitude: long || "",
-      latitude: lat || "",
+      codes: codes.split(","),
     };
 
     try {
@@ -48,10 +44,30 @@ function App() {
         setLoading(false);
         return;
       }
+      let batchNo = "";
+      let startCode = "";
+      let endCode = "";
+
+      // Find batchNo (starts with PG), then assign first two others as start/end
+      const batchIndex = filteredCodes.findIndex((c) =>
+        c.trim().startsWith("PQ")
+      );
+      if (batchIndex !== -1) {
+        batchNo = filteredCodes[batchIndex];
+        const others = filteredCodes.filter((_, i) => i !== batchIndex);
+        startCode = others[0] || "";
+        endCode = others[1] || "";
+      } else {
+        // fallback: first is start, second is end, third is batch
+        batchNo = filteredCodes[0] || "";
+        startCode = filteredCodes[1] || "";
+        endCode = filteredCodes[2] || "";
+      }
+
       const payload = {
-        startCode: filteredCodes[0],
-        endCode: filteredCodes[1],
-        BatchNo: filteredCodes[2],
+        startCode,
+        endCode,
+        BatchNo: batchNo,
       };
       const result = await axios.post(
         "https://deluxe.unomok.com/api/dulux/createStartEndCodes",
@@ -68,13 +84,6 @@ function App() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition((position) => {
-      setLat(position.coords.latitude);
-      setLong(position.coords.longitude);
-    });
-  }, []);
-
   return (
     <div className="p-6 max-w-lg mx-auto">
       <h2 className="text-2xl font-bold mb-4 text-center">Scan QR Codes</h2>
@@ -82,7 +91,7 @@ function App() {
       {/* QR Scanner */}
       <ReadQr onScan={handleQrScan} />
 
-      {/* Single Input Field */}
+      {/* /* Single Input Field */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">
           QR Codes (comma separated)
@@ -96,6 +105,8 @@ function App() {
         />
       </div>
 
+      {/* Show parsed codes */}
+
       {/* Proceed Button */}
       <button
         disabled={!isReady || loading}
@@ -108,6 +119,51 @@ function App() {
       >
         {loading ? "Submitting..." : "Proceed"}
       </button>
+
+      {codes &&
+        codes.split(",").length > 2 &&
+        (() => {
+          const filteredCodes = codes.split(",").filter((c) => c.trim() !== "");
+          let batchNo = "";
+          let startCode = "";
+          let endCode = "";
+
+          const batchIndex = filteredCodes.findIndex((c) =>
+            c.trim().startsWith("PQ")
+          );
+          if (batchIndex !== -1) {
+            batchNo = filteredCodes[batchIndex];
+            const others = filteredCodes.filter((_, i) => i !== batchIndex);
+            startCode = others[0] || "";
+            endCode = others[1] || "";
+          } else {
+            batchNo = filteredCodes[0] || "";
+            startCode = filteredCodes[1] || "";
+            endCode = filteredCodes[2] || "";
+          }
+
+          return (
+            <div className="mb-4 p-3 bg-gray-100 rounded-lg">
+              <strong>Scanned Codes:</strong>
+              {/* <ul className="list-disc list-inside mt-2">
+                {filteredCodes.map((code, index) => (
+                  <li key={index}>{code.trim()}</li>
+                ))}
+              </ul> */}
+              <div className="mt-3">
+                <div>
+                  <strong>Start Code:</strong> {startCode}
+                </div>
+                <div>
+                  <strong>End Code:</strong> {endCode}
+                </div>
+                <div>
+                  <strong>Batch No:</strong> {batchNo}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import QrReader  from "react-qr-reader-es6";
+import BarcodeScanner from "react-qr-barcode-scanner";
 
 const ReadQr = ({ onScan }) => {
   const handleScan = (data) => {
@@ -14,11 +14,18 @@ const ReadQr = ({ onScan }) => {
 
   return (
     <div className="flex justify-center my-4">
-       <QrReader
+       <BarcodeScanner
         delay={300}
-        onError={handleError}
-        onScan={handleScan}
+        // onError={handleError}
+        // onScan={handleScan}
+        facingMode="environment"
         style={{ width: "250px", height: "250px" }}
+        onUpdate={(err, result) => {
+          if (result) {
+            console.log("Scanned QR Code:", result);
+            onScan(result.text);}
+          else handleError(err);
+        }}
       />
     </div>
   );
